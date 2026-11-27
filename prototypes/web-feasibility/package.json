@@ -1,0 +1,24 @@
+{
+  "name": "travel-web-feasibility-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "start": "node --env-file-if-exists=.env.web-probe.local ../../node_modules/expo/bin/cli start --localhost --port 8094",
+    "export": "node --env-file-if-exists=.env.web-probe.local ../../node_modules/expo/bin/cli export --platform web --output-dir dist",
+    "postexport": "node build-pwa.js",
+    "serve": "node --env-file-if-exists=.env.web-probe.local serve-static.js",
+    "start-local": "node local-server.js start",
+    "status-local": "node local-server.js status",
+    "stop-local": "node local-server.js stop"
+  },
+  "dependencies": {
+    "expo": "~57.0.22",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "~0.21.0",
+    "@expo/metro-runtime": "~57.0.15"
+  }
+}

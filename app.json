@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Travel App",
+    "slug": "travel-app",
+    "scheme": "travel-app",
+    "platforms": [
+      "ios"
+    ],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "ios": {
+            "customBuildFlags": "-DSQLITE_DEFAULT_FOREIGN_KEYS=1"
+          }
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "backgroundColor": "#F5F2EA"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "expo-apple-places",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native Apple MapKit place search and reverse geocoding for Expo",
+  "main": "src/ExpoApplePlacesModule.ts",
+  "types": "src/ExpoApplePlacesModule.ts"
+}

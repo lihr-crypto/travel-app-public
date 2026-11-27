@@ -1,0 +1,23 @@
+{
+  "name": "travel-web-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env.local ../node_modules/expo/bin/cli start --localhost --port 8097",
+    "build": "node ../node_modules/expo/bin/cli export --platform web --output-dir dist",
+    "postbuild": "node scripts/package-pwa.js",
+    "serve": "node --env-file-if-exists=.env.local server.cjs",
+    "serve:background": "node local-server.cjs start",
+    "serve:status": "node local-server.cjs status",
+    "serve:stop": "node local-server.cjs stop"
+  },
+  "dependencies": {
+    "expo": "~57.0.22",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "~0.21.0",
+    "@expo/metro-runtime": "~57.0.15"
+  }
+}

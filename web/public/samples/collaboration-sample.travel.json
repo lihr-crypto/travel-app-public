@@ -1,0 +1,85 @@
+{
+  "format": "travel-trip-package",
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-13T01:00:00.000Z",
+  "state": {
+    "trips": [
+      {
+        "id": "public-trip-sample",
+        "title": "文件互通公开样例",
+        "startDate": "2026-10-13",
+        "endDate": "2026-10-14",
+        "mapRegion": "china_mainland",
+        "note": null,
+        "createdAt": "2026-10-13T01:00:00.000Z",
+        "updatedAt": "2026-10-13T01:00:00.000Z"
+      }
+    ],
+    "days": [
+      {
+        "id": "sample-day-1",
+        "tripId": "public-trip-sample",
+        "date": "2026-10-13",
+        "dayIndex": 1,
+        "createdAt": "2026-10-13T01:00:00.000Z",
+        "updatedAt": "2026-10-13T01:00:00.000Z"
+      },
+      {
+        "id": "sample-day-2",
+        "tripId": "public-trip-sample",
+        "date": "2026-10-14",
+        "dayIndex": 2,
+        "createdAt": "2026-10-13T01:00:00.000Z",
+        "updatedAt": "2026-10-13T01:00:00.000Z"
+      }
+    ],
+    "items": [
+      {
+        "id": "sample-item",
+        "tripId": "public-trip-sample",
+        "dayId": "sample-day-1",
+        "placeId": "sample-place",
+        "type": "transport",
+        "title": "到达示例",
+        "sortOrder": 0,
+        "timeMode": "exact",
+        "startDateTime": null,
+        "endDateTime": "2026-10-13T10:20",
+        "period": null,
+        "isFixed": false,
+        "note": "仅设置到达时间，文件互通测试。",
+        "payload": {
+          "kind": "transport",
+          "mode": "train",
+          "serviceNumber": "TEST"
+        },
+        "createdAt": "2026-10-13T01:00:00.000Z",
+        "updatedAt": "2026-10-13T01:00:00.000Z"
+      }
+    ],
+    "places": [
+      {
+        "id": "sample-place",
+        "name": "公开地点示例",
+        "coordinate": {
+          "latitude": 39.9,
+          "longitude": 116.4,
+          "system": "gcj02"
+        },
+        "address": "北京 · 公开演示坐标",
+        "provider": "amap",
+        "providerPlaceId": null,
+        "metadata": {
+          "userNamed": true
+        },
+        "createdAt": "2026-10-13T01:00:00.000Z",
+        "updatedAt": "2026-10-13T01:00:00.000Z"
+      }
+    ],
+    "extras": {}
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "digest": "2902ce2881d9181e21b2fd9e3f38ca23546f6b76e46437aaf5b3ad0171433dd1"
+  }
+}

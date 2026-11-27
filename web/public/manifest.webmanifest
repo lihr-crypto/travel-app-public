@@ -1,0 +1,30 @@
+{
+  "name": "Travel App",
+  "short_name": "Travel",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#086050",
+  "background_color": "#F5F2EA",
+  "icons": [
+    {
+      "src": "https://dashboard.example.com/app-icons/travel-180-9a4906ecc3ba.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://dashboard.example.com/app-icons/travel-192-43a75716fe1d.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://dashboard.example.com/app-icons/travel-512-b4c6944c6ac5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

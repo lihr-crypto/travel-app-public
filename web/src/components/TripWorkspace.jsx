@@ -1,0 +1,64 @@
+import React, { useMemo, useRef, useState } from 'react';
+import { Text, View } from 'react-native';
+import { TripBottomSheet, TRIP_SHEET_SNAP_PERCENTAGES } from '@/components/trip-bottom-sheet';
+import { DayTimeline } from '@/components/day-timeline';
+import { useDaySheetPan } from '@/components/use-day-sheet-pan';
+import { DaySwipeGuardProvider, useDaySwipeGuardState } from '@/components/day-swipe-guard';
+import { buildTimelineProjection } from '@/application/projections/timeline';
+import { usePlan } from '../PlanContext';
+import { chineseDate, dateWithWeek, daysFor, itemsFor, matchingPlace, externalMap } from '../utils';
+import WebMap from '../maps/WebMap';
+import { itineraryMarkers, showUnscheduledMarkers } from '../maps/projection';
+import Modal from './Modal';
+import MapCandidateCard from './MapCandidateCard';
+import MapSearchBar from './MapSearchBar';
+import useMapCandidate from '../use-map-candidate';
+import ItemEditor from './ItemEditor';
+import ItemActions from './ItemActions';
+import ItemRow from './ItemRow';
+import useDaySwipe from '../use-day-swipe';
+import { TripManagement, DayManagement } from './TripForms';
+import { useMotionState } from '../motion';
+
+export default function TripWorkspace({ tripId, view='overview', dayId, navigate, back }) {
+  const { state, config, refreshMaps, run, canEdit }=usePlan();
+  const writable=canEdit(tripId);
+  const trip=state.trips.find(trip=>trip.id===tripId);
+  const days=useMemo(()=>daysFor(state,tripId),[state,tripId]);
+  const day=days.find(day=>day.id===dayId)||days[0];
+  const [editor,setEditor]=useMotionState(null),[actions,setActions]=useMotionState(null),[managing,setManaging]=useMotionState(false),[dayManaging,setDayManaging]=useMotionState(false),[choosingDay,setChoosingDay]=useMotionState(false),[preview,setPreview]=useMotionState(null),[selected,setSelected]=useState(null);
+  const [snap,setSnap]=useState('half'); const [height,setHeight]=useState(650);
+  const overviewRef=useRef(null);
+  const workspaceRef=useRef(null);
+  // A place picked on the map (tap or search). Transient UI state only: it is not an Item, a Place or a focus selection.
+  const picker=useMapCandidate({region:trip?.mapRegion,config,writable,scope:`${tripId}|${view}|${day?.id}|${writable}`,dayId:view==='day'&&day?day.id:null});
+  const { sheetRef,scrollRef,position,contentGesture,timelineGestureRef,onPanStart,onPanDelta,onPanEnd,onTimelineTouchChange,onScroll,onContainerLayout,onScrollLayout,onContentSizeChange }=useDaySheetPan(snap,day?.id||tripId);
+  const guard=useDaySwipeGuardState();
+  const places=useMemo(()=>Object.fromEntries(state.places.map(place=>[place.id,place])),[state]);
+  const items=useMemo(()=>view==='day'&&day?itemsFor(state,tripId,day.id):view==='unscheduled'?itemsFor(state,tripId,null):state.items.filter(item=>item.tripId===tripId&&item.dayId&&days.some(day=>day.id===item.dayId)),[state,tripId,day,view,days]);
+  const markers=useMemo(()=>itineraryMarkers(items,places,trip?.mapRegion,view),[items,places,trip,view]);
+  const [unscheduledOverride,setUnscheduledOverride]=useState(null);
+  const showPins=view!=='unscheduled'||showUnscheduledMarkers(markers.length,unscheduledOverride);
+  const omitted=items.filter(item=>item.placeId&&!matchingPlace(places[item.placeId],trip?.mapRegion)).length;
+  const projection=useMemo(()=>day?buildTimelineProjection({day,items:view==='day'?items:[],placesById:places}):null,[day,items,places,view]);
+  const unscheduled=itemsFor(state,tripId,null);
+  const historic=state.items.filter(item=>item.tripId===tripId&&item.dayId&&!days.some(day=>day.id===item.dayId));
+  const openDay=id=>{if(view!=='day')setSnap('half');setSelected(null);setChoosingDay(false);navigate(`/trip/${tripId}/day/${id}`);};
+  const shiftDay=direction=>{const index=days.findIndex(value=>value.id===day.id),next=days[index+(direction==='left'?1:-1)];if(next)openDay(next.id);};
+  const reorder=async(itemId,where)=>{try{await run('reorderItem',{itemId,position:where});}catch{}};
+  const openEdit=itemId=>{if(!writable){setPreview([itemId]);return;}const item=state.items.find(item=>item.id===itemId);if(item)setEditor({item,dayId:item.dayId});};
+  useDaySwipe(workspaceRef, { enabled:view==='day'&&!editor&&!actions&&!managing&&!dayManaging&&!choosingDay&&!preview, resetKey:day?.id, onSwipe:shiftDay });
+  if(!trip)return <div className="empty-state"><h2>找不到这趟旅行</h2><button className="button" onClick={back}>回到我的旅行</button></div>;
+  const title=view==='day'&&day?`第${day.dayIndex}天`:view==='unscheduled'?'未安排行程':trip.title;
+  const confirmCandidate=()=>{
+    const picked=picker.candidate;
+    if(!picked||picked.kind==='tentative')return;
+    setEditor({dayId:picked.targetDayId,initialPlace:picked.kind==='place'?{kind:'search',result:picked.result}:{kind:'map-picker',coordinate:picked.coordinate,provider:trip.mapRegion==='china_mainland'?'amap':'google',enrichment:picked.enrichment}});
+  };
+  // The card sits just above the sheet; with the sheet fully open there is no map left, so it floats over the sheet.
+  const cardBottom=snap==='expanded'?16:Math.round(height*TRIP_SHEET_SNAP_PERCENTAGES[snap]/100)+12;
+  const mapBias=(()=>{const item=state.items.find(item=>item.tripId===tripId&&matchingPlace(places[item.placeId],trip.mapRegion));return item?places[item.placeId].coordinate:undefined;})();
+  const pinPress=({marker,members})=>{picker.close();if(view==='day')setSelected(marker.id);else setPreview([...new Set(members.flatMap(member=>member.sourceItemIds))]);};
+  const scopeKey=`${view}:${showPins}:${day?.id}:${markers.map(marker=>`${marker.id},${marker.coordinate.latitude},${marker.coordinate.longitude}`).join(';')}`;
+  return <main ref={workspaceRef} className="trip-workspace"><View style={{flex:1,position:'relative'}} onLayout={event=>{onContainerLayout(event);setHeight(event.nativeEvent.layout.height);}}><WebMap onRetry={refreshMaps} region={trip.mapRegion} config={config} markers={showPins?markers:[]} mode={view==='day'?'day':'overview'} selectedId={selected} onMarker={pinPress} onTap={writable?payload=>{setSelected(null);picker.tap(payload);}:undefined} candidate={picker.mapCandidate} cameraKey={scopeKey} bottomPadding={height * TRIP_SHEET_SNAP_PERCENTAGES.half / 100}/><header className="workspace-toolbar"><button className="glass-button" onClick={back}>‹ 我的旅行</button><button className="glass-button icon-button" aria-label="管理旅行" onClick={()=>setManaging(true)}>⋯</button></header>{writable&&<MapSearchBar trip={trip} config={config} bias={mapBias} onSelect={result=>{setSelected(null);picker.choosePlace(result);}}/>}{view==='day'&&day?<DaySwipeGuardProvider guard={guard}><TripBottomSheet ref={sheetRef} snap={snap} onSnapChange={setSnap} scrollable unmanagedScroll scrollViewRef={scrollRef} animatedPosition={position} contentGesture={contentGesture} contentPanningGesture={false} scrollEnabled={false} cancelContentTouches={false} simultaneousHandlers={timelineGestureRef} onScroll={onScroll} onScrollLayout={onScrollLayout} onContentSizeChange={onContentSizeChange} testID="web-day-sheet" header={<View><div className="day-header"><button aria-label="前一天" disabled={day.id===days[0]?.id} onClick={()=>shiftDay('right')}>‹</button><button className="day-title" onClick={()=>setChoosingDay(true)}><strong>{title} <small>⌄</small></strong><span>{dateWithWeek(day.date)}</span></button><button aria-label="后一天" disabled={day.id===days.at(-1)?.id} onClick={()=>shiftDay('left')}>›</button></div>{writable&&<div className="day-tools"><button className="text-button" onClick={()=>setEditor({dayId:day.id})}>＋ 添加行程</button><button className="text-button subtle" onClick={()=>setDayManaging(true)}>管理日期</button></div>}</View>}>{omitted>0&&<Text style={{paddingHorizontal:24,paddingVertical:8,color:'#627269',fontSize:12}}>{omitted} 项旧来源地点未显示在地图上。</Text>}<DayTimeline projection={projection} selectedItemId={selected} onSelectItem={setSelected} onOpenItemDetails={openEdit} onOpenItemActions={writable?id=>setActions(state.items.find(item=>item.id===id)):undefined} onReorderDrop={writable?reorder:undefined} gestureRef={timelineGestureRef} onGestureTouchChange={onTimelineTouchChange} onPanScrollStart={onPanStart} onPanScrollDelta={onPanDelta} onPanScrollEnd={onPanEnd} onScrollToOffset={offset=>scrollRef.current?.scrollTo({y:offset,animated:false})} resetKey={day.id} emptyState={{title:'这一天还没有行程',action:writable?{label:'添加行程',onPress:()=>setEditor({dayId:day.id})}:undefined}}/><div className="sheet-bottom-links"><button className="text-button" onClick={()=>navigate(`/trip/${tripId}`)}>旅行总览</button><button className="text-button" onClick={()=>navigate(`/trip/${tripId}/unscheduled`)}>未安排行程 {unscheduled.length>0?`(${unscheduled.length})`:''}</button></div></TripBottomSheet></DaySwipeGuardProvider>:<TripBottomSheet ref={overviewRef} snap={snap} onSnapChange={setSnap} scrollable testID="web-overview-sheet" header={<View><div className="overview-heading"><h1>{title}</h1>{view==='unscheduled'?<button className="text-button" onClick={()=>navigate(`/trip/${tripId}`)}>旅行总览</button>:<button className="icon-button" aria-label="旅行选项" onClick={()=>setManaging(true)}>⋯</button>}</div>{view==='overview'?<p className="overview-dates">{chineseDate(trip.startDate)} — {chineseDate(trip.endDate,false)}</p>:null}</View>}>{view==='overview'?<><div className="overview-tools">{writable&&<button className="button button-soft" onClick={()=>setEditor({dayId:null})}>＋ 添加未安排行程</button>}<button className="text-button" onClick={()=>navigate(`/trip/${tripId}/unscheduled`)}>未安排行程 ({unscheduled.length}) ›</button></div>{omitted>0&&<p className="subtle" style={{padding:'0 20px'}}>{omitted} 项旧来源地点未显示在地图上。</p>}{days.map(day=>{const entries=itemsFor(state,tripId,day.id);return <button className="day-card" key={day.id} onClick={()=>openDay(day.id)}><span className="day-badge">{day.dayIndex}</span><span><strong>第{day.dayIndex}天 <small>{dateWithWeek(day.date)}</small></strong><p>{entries.length?entries.slice(0,2).map(item=>item.title).join(' · '):'还没有安排行程'}</p>{entries.length>2&&<small>另有 {entries.length-2} 项行程</small>}</span><span>›</span></button>;})}{historic.length>0&&<div className="history-items"><h3>待安排日期的历史行程</h3>{historic.map(item=><ItemRow key={item.id} item={item} place={places[item.placeId]} onSelect={()=>openEdit(item.id)} onActions={writable?()=>setActions(item):undefined}/>)}</div>}</>:<><div className="overview-tools">{writable&&<button className="text-button" onClick={()=>setEditor({dayId:null})}>＋ 添加行程</button>}{markers.length>0&&<button className="text-button" onClick={()=>setUnscheduledOverride(!showPins)}>{showPins?'隐藏地图地点':`显示地图地点 (${markers.length})`}</button>}</div>{!items.length?<div className="empty-state"><h3>还没有未安排行程</h3></div>:items.map(item=><ItemRow key={item.id} item={item} place={places[item.placeId]} onSelect={()=>openEdit(item.id)} onActions={writable?()=>setActions(item):undefined}/>)}</>}</TripBottomSheet>}{picker.candidate&&picker.candidate.kind!=='tentative'&&!editor&&<MapCandidateCard candidate={picker.candidate} days={days} canChooseDay={view==='overview'} bottom={cardBottom} onTargetChange={picker.setTarget} onConfirm={confirmCandidate} onClose={picker.close}/>}</View>{editor&&<ItemEditor trip={trip} item={editor.item} dayId={editor.dayId} initialPlace={editor.initialPlace} onClose={()=>setEditor(null)} onSaved={id=>{setSelected(id);picker.close();}}/>}{actions&&<ItemActions item={actions} trip={trip} onClose={()=>setActions(null)} onEdit={item=>setEditor({item,dayId:item.dayId})}/>} {managing&&<TripManagement trip={trip} onClose={()=>setManaging(false)} onDeleted={back}/>} {dayManaging&&day&&<DayManagement trip={trip} day={day} onClose={()=>setDayManaging(false)} onChanged={()=>navigate(`/trip/${tripId}`)}/>} {choosingDay&&<Modal title="选择日期" onClose={()=>setChoosingDay(false)}><div className="day-choices">{days.map(value=><button key={value.id} className={value.id===day.id?'active':''} onClick={()=>openDay(value.id)}><strong>第{value.dayIndex}天</strong><span>{chineseDate(value.date,false)}</span></button>)}</div></Modal>} {preview&&<Modal title="地图上的行程" onClose={()=>setPreview(null)}><div className="place-occurrences">{preview.map(id=>{const item=state.items.find(item=>item.id===id);if(!item)return null;const ownerDay=state.days.find(day=>day.id===item.dayId),place=places[item.placeId];return <div key={id}><strong>{item.title}</strong>{item.note&&<p style={{whiteSpace:'pre-wrap'}}>{item.note}</p>}<small>{ownerDay?`第${ownerDay.dayIndex}天 · ${chineseDate(ownerDay.date,false)}`:'未安排行程'}</small><div className="button-row"><button className="button button-soft" onClick={()=>{setPreview(null);if(ownerDay)openDay(ownerDay.id);else navigate(`/trip/${tripId}/unscheduled`);}}>{ownerDay?'查看当天':'查看未安排'}</button>{place&&<a className="button button-ghost" href={externalMap(place)} target="_blank" rel="noreferrer">外部地图 ↗</a>}</div></div>;})}</div></Modal>}</main>;
+}

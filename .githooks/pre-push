@@ -1,0 +1,9 @@
+#!/bin/sh
+# Local guard: changes to an existing main branch are merged through GitHub PRs.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
+    echo "main 的更新请通过 GitHub Pull Request 合并；请推送功能分支。" >&2
+    exit 1
+  fi
+done
+exit 0

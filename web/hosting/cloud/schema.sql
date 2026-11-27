@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS travel_users (user_id TEXT PRIMARY KEY NOT NULL, namespace TEXT UNIQUE NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS travel_plans (id TEXT PRIMARY KEY NOT NULL, owner_id TEXT NOT NULL, revision INTEGER NOT NULL, state_json TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, last_operation_id TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS travel_members (plan_id TEXT NOT NULL REFERENCES travel_plans(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES travel_users(user_id), role TEXT NOT NULL, PRIMARY KEY(plan_id,user_id));
+CREATE TABLE IF NOT EXISTS travel_operations (user_id TEXT NOT NULL, operation_id TEXT NOT NULL, plan_id TEXT NOT NULL, payload_hash TEXT NOT NULL, result_json TEXT NOT NULL, PRIMARY KEY(user_id,operation_id));
+CREATE TABLE IF NOT EXISTS travel_versions (plan_id TEXT NOT NULL, revision INTEGER NOT NULL, state_json TEXT NOT NULL, saved_at TEXT NOT NULL, PRIMARY KEY(plan_id,revision));
+CREATE TABLE IF NOT EXISTS travel_invites (token_hash TEXT PRIMARY KEY NOT NULL, plan_id TEXT NOT NULL REFERENCES travel_plans(id) ON DELETE CASCADE, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TEXT NOT NULL, accepted_by TEXT);

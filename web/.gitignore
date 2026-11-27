@@ -1,0 +1,10 @@
+dist/
+.expo/
+.env.local
+.runtime/
+node_modules/
+.test-deps/
+artifacts/
+private/
+.build-deps/
+hosting/cloud/*.bundle.mjs

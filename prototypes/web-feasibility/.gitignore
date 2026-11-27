@@ -1,0 +1,9 @@
+.deps/
+node_modules/
+.expo/
+dist/
+private/
+.env.web-probe.local
+.runtime/
+dist-validation.zip
+

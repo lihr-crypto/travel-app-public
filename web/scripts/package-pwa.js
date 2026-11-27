@@ -1,0 +1,21 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { buildWorkerSource } = require('../pwa-worker.cjs');
+const root=path.resolve('dist');
+const list=directory=>fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?list(path.join(directory,entry.name)):[path.join(directory,entry.name)]);
+const assets=list(root).filter(file=>/\.(?:js|css|png|ico|webmanifest|woff2?)$/.test(file)&&!file.endsWith('/sw.js'));
+let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace('<html lang="en">','<html lang="zh-CN">').replace('initial-scale=1, shrink-to-fit=no','initial-scale=1, viewport-fit=cover, shrink-to-fit=no');
+// iOS downloads install icons without the private Site's browser session.
+const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest'),'utf8'));
+const appleIcon=manifest.icons.find(icon=>icon.sizes==='180x180').src;
+const favicon=manifest.icons.find(icon=>icon.sizes==='192x192').src;
+html=html.replace(/<link rel="(?:manifest|apple-touch-icon|icon)"[^>]*>|<meta name="apple-mobile-web-app-(?:capable|title)"[^>]*>/g,'');
+html=html.replace('</head>',`<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials"><link rel="icon" type="image/png" sizes="192x192" href="${favicon}"><link rel="apple-touch-icon" sizes="180x180" href="${appleIcon}"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Travel"></head>`);
+fs.writeFileSync(path.join(root,'index.html'),html);
+const hash=crypto.createHash('sha256').update(html).update(fs.readFileSync(path.resolve('pwa-worker.cjs'))).update(fs.readFileSync(path.resolve('../prototypes/web-feasibility/pwa-worker.js')));assets.sort().forEach(file=>hash.update(path.relative(root,file)).update(fs.readFileSync(file)));
+const build=hash.digest('hex').slice(0,16);
+const precache=['/index.html',...assets.map(file=>'/'+path.relative(root,file).split(path.sep).join('/'))];
+const source=buildWorkerSource(build,precache);
+fs.writeFileSync(path.join(root,'sw.js'),source);
+console.log(`Travel PWA ${build}: ${precache.length} shell assets; business records/API responses excluded`);
